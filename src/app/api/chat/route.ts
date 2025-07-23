@@ -1,34 +1,38 @@
-import OpenAI from "openai";
-import { OpenAIStream, StreamingTextResponse } from "ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { StreamingTextResponse } from "ai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
 
 export const runtime = "edge";
 
 export async function POST(req: Request) {
-  const {
-    messages,
-    model,
-    temperature,
-    max_tokens,
-    top_p,
-    frequency_penalty,
-    presence_penalty,
-  } = await req.json();
+  try {
+    const { messages } = await req.json();
 
-  const response = await openai.chat.completions.create({
-    stream: true,
-    model: model,
-    temperature: temperature,
-    max_tokens: max_tokens,
-    top_p: top_p,
-    frequency_penalty: frequency_penalty,
-    presence_penalty: presence_penalty,
-    messages: messages,
-  });
+    // Get the Gemini model
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-  const stream = OpenAIStream(response);
-  return new StreamingTextResponse(stream);
+    // Convert messages to Gemini format
+    const lastMessage = messages[messages.length - 1];
+    const prompt = lastMessage.content;
+
+    // Generate response
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    // Create a simple stream response
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(text));
+        controller.close();
+      },
+    });
+
+    return new StreamingTextResponse(stream);
+  } catch (error) {
+    console.error("Gemini API error:", error);
+    return new Response("Error generating response", { status: 500 });
+  }
 }
