@@ -1,7 +1,4 @@
 {
-    "platform": {
-        "apiRuntime": "node:18"
-    },
     "routes": [
         {
             "route": "/api/*",
@@ -11,12 +8,6 @@
         }
     ],
     "navigationFallback": {
-        "rewrite": "/index.html",
-        "exclude": [
-            "/api/*",
-            "/_next/*",
-            "/favicon.ico",
-            "/*.{png,jpg,gif,svg,ico,css,js}"
-        ]
+        "rewrite": "/index.html"
     }
 }

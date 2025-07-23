@@ -12,8 +12,6 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
-  trailingSlash: false,
-  poweredByHeader: false,
 };
 
 export default nextConfig;
