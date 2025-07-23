@@ -1,7 +1,8 @@
 import { ImageResponse } from "next/og";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../../../../firebaseConfig";
 import { cutString, getReadingTimeInMinutes } from "@/utils/utils";
+
+// Add runtime directive to prevent build-time execution
+export const runtime = 'edge';
 
 export async function GET(request: Request) {
   try {
@@ -14,32 +15,42 @@ export async function GET(request: Request) {
     let date = "";
     let readingTime = 0;
 
-    if (id.length == 10) {
-      const indexDocRef = doc(db, "index", id);
-      const indexDocSnapshot = await getDoc(indexDocRef);
+    // Only fetch from Firebase if we have a valid ID and Firebase is available
+    if (id.length == 10 && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+      try {
+        // Dynamic import to avoid build-time Firebase initialization
+        const { doc, getDoc } = await import("firebase/firestore");
+        const { db } = await import("../../../../firebaseConfig");
 
-      if (indexDocSnapshot.exists()) {
-        const { userId } = indexDocSnapshot.data();
+        const indexDocRef = doc(db, "index", id);
+        const indexDocSnapshot = await getDoc(indexDocRef);
 
-        const chatThreadRef = doc(db, "users", userId, "history", id);
-        const chatThreadDoc = await getDoc(chatThreadRef);
+        if (indexDocSnapshot.exists()) {
+          const { userId } = indexDocSnapshot.data();
 
-        if (chatThreadDoc.exists()) {
-          chatThread = chatThreadDoc.data();
-          question = chatThread.chats[0].question;
-          const timestamp = chatThread.createdAt.toDate();
-          const dateObject = new Date(timestamp);
-          date = dateObject.toLocaleString("en-US", {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          });
-          readingTime = getReadingTimeInMinutes(chatThread.chats);
+          const chatThreadRef = doc(db, "users", userId, "history", id);
+          const chatThreadDoc = await getDoc(chatThreadRef);
+
+          if (chatThreadDoc.exists()) {
+            chatThread = chatThreadDoc.data();
+            question = chatThread.chats[0].question;
+            const timestamp = chatThread.createdAt.toDate();
+            const dateObject = new Date(timestamp);
+            date = dateObject.toLocaleString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            });
+            readingTime = getReadingTimeInMinutes(chatThread.chats);
+          } else {
+            console.log("Chat thread document does not exist");
+          }
         } else {
-          console.log("Chat thread document does not exist");
+          console.log("Index document does not exist");
         }
-      } else {
-        console.log("Index document does not exist");
+      } catch (firebaseError) {
+        console.log("Firebase error:", firebaseError);
+        // Continue with default image if Firebase fails
       }
     }
 
