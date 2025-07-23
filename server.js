@@ -35,9 +35,25 @@ app
   .then(() => {
     console.log("Next.js app prepared successfully");
 
+    // Create a simple health check endpoint that responds immediately
+    const healthCheck = (req, res) => {
+      if (req.url === "/health" || req.url === "/") {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        res.end("OK - Server is running");
+        return true;
+      }
+      return false;
+    };
+
     const server = createServer(async (req, res) => {
       try {
         console.log(`Request: ${req.method} ${req.url}`);
+
+        // Handle health checks immediately
+        if (healthCheck(req, res)) {
+          return;
+        }
+
         const parsedUrl = parse(req.url, true);
         await handle(req, res, parsedUrl);
       } catch (err) {
